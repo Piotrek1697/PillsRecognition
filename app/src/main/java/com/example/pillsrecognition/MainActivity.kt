@@ -2,29 +2,36 @@ package com.example.pillsrecognition
 
 import android.content.Context
 import android.content.res.ColorStateList
-import android.graphics.Color
+import android.graphics.*
+import android.media.Image
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
+import android.view.PixelCopy
 import android.view.Surface.ROTATION_90
+import android.view.SurfaceView
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.ar.core.Config
 import com.google.ar.core.Session
+import com.google.ar.core.TrackingState
 import com.google.ar.sceneform.AnchorNode
+import com.google.ar.sceneform.FrameTime
 import com.google.ar.sceneform.animation.ModelAnimator
 import com.google.ar.sceneform.rendering.ModelRenderable
 import com.google.ar.sceneform.ux.ArFragment
+import com.google.ar.sceneform.ux.BaseTransformableNode
+import com.google.ar.sceneform.ux.SelectionVisualizer
 import com.google.ar.sceneform.ux.TransformableNode
-import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata
 import com.google.firebase.ml.vision.objects.FirebaseVisionObject
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.label.ImageLabeling
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerLocalModel
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerOptions
-import com.otaliastudios.cameraview.Frame
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.ByteArrayOutputStream
 
 
 class MainActivity : AppCompatActivity() {
@@ -35,7 +42,9 @@ class MainActivity : AppCompatActivity() {
     private var animator: ModelAnimator? = null
     private var nextAnimation: Int = 0
     private var transformNode: TransformableNode? = null
-
+    private var session: Session? = null
+    private var config: Config? = null
+    private var lele: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +67,21 @@ class MainActivity : AppCompatActivity() {
 //        }
 
         arFragment = supportFragmentManager.findFragmentById(R.id.sceneform_fragment) as ArFragment
+
+        //arFragment!!.transformationSystem.selectionVisualizer = CustomVisualizer()
+
+        //No white dots
+        arFragment!!.arSceneView.planeRenderer.isVisible = false
+
+        //No hand
+        arFragment!!.planeDiscoveryController.hide()
+        arFragment!!.planeDiscoveryController.setInstructionView(null)
+
+        arFragment!!.arSceneView.scene
+            .addOnUpdateListener { frameTime: FrameTime? ->
+                this.onUpdateFrame(frameTime)
+            }
+
         arFragment!!.setOnTapArPlaneListener { hitResult, plane, motionEvent ->
             Log.d("Tap", "Ar Plane tapped")
             if (animationNospa != null) {
@@ -106,6 +130,94 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (session == null) {
+            session = Session(this@MainActivity)
+            session?.setupAutofocus()
+        }
+    }
+
+    private fun Session.setupAutofocus() {
+
+        //Create the config
+        val config = Config(this)
+
+        //Check if the configuration is set to fixed
+        if (config?.focusMode == Config.FocusMode.FIXED)
+            config?.focusMode = Config.FocusMode.AUTO
+
+        //Sceneform requires that the ARCore session is configured to the UpdateMode LATEST_CAMERA_IMAGE.
+        //This is probably not required for just auto focus. I was updating the camera configuration as well
+        config?.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
+
+        //Reconfigure the session
+        configure(config)
+
+        //Setup the session with ARSceneView
+        arFragment!!.arSceneView.setupSession(this)
+
+        //log out if the camera is in auto focus mode
+        Log.d("LabelTag", "The camera is current in focus mode : ${config.focusMode.name}")
+    }
+
+    private fun onUpdateFrame(frameTime: FrameTime?) {
+        lele++
+        val view = arFragment!!.arSceneView
+        val frame = arFragment!!.arSceneView.arFrame
+
+        // If there is no frame or ARCore is not tracking yet, just return.
+        if (frame == null || frame.camera.trackingState != TrackingState.TRACKING) {
+            return
+        }
+        if (lele % 10 == 0) {
+            val cameraImage: Image = frame!!.acquireCameraImage()
+            //The camera image received is in YUV YCbCr Format. Get buffers for each of the planes and use them to create a new bytearray defined by the size of all three buffers combined
+            extractDataFromFrame(getBitmap(cameraImage))
+            cameraImage.close()
+        }
+    }
+
+    private fun getBitmap(cameraImage: Image): InputImage {
+        val cameraPlaneY = cameraImage.planes[0].buffer
+        val cameraPlaneU = cameraImage.planes[1].buffer
+        val cameraPlaneV = cameraImage.planes[2].buffer
+
+//Use the buffers to create a new byteArray that
+        val compositeByteArray =
+            ByteArray(cameraPlaneY.capacity() + cameraPlaneU.capacity() + cameraPlaneV.capacity())
+
+        cameraPlaneY.get(compositeByteArray, 0, cameraPlaneY.capacity())
+        cameraPlaneU.get(compositeByteArray, cameraPlaneY.capacity(), cameraPlaneU.capacity())
+        cameraPlaneV.get(
+            compositeByteArray,
+            cameraPlaneY.capacity() + cameraPlaneU.capacity(),
+            cameraPlaneV.capacity()
+        )
+
+//        val baOutputStream = ByteArrayOutputStream()
+//        val yuvImage: YuvImage = YuvImage(
+//            compositeByteArray,
+//            ImageFormat.NV21,
+//            cameraImage.width,
+//            cameraImage.height,
+//            null
+//        )
+//        yuvImage.compressToJpeg(
+//            Rect(0, 0, cameraImage.width, cameraImage.height),
+//            65,
+//            baOutputStream
+//        )
+        //val byteForBitmap = baOutputStream.toByteArray()
+        return InputImage.fromByteArray(
+            compositeByteArray,
+            /* image width */ cameraImage.width,
+            /* image height */ cameraImage.height,
+            ROTATION_90,
+            InputImage.IMAGE_FORMAT_YV12
+        )
+    }
+
     private fun setupModel() {
         Log.d("Tap", "Model setup")
         ModelRenderable.builder() // To load as an asset from the 'assets' folder ('src/main/assets/andy.sfb'):
@@ -118,7 +230,7 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    private fun extractDataFromFrame(frame: Frame, callback: (String) -> Unit) {
+    private fun extractDataFromFrame(frame: InputImage) {
 
         val localModel = AutoMLImageLabelerLocalModel.Builder()
             .setAssetFilePath("manifest.json")
@@ -129,8 +241,10 @@ class MainActivity : AppCompatActivity() {
             .setConfidenceThreshold(0.5f)  // Evaluate your model in the Firebase console
             // to determine an appropriate value.
             .build()
+
+        //getVisionImageFromFrame(frame){
         val labeler = ImageLabeling.getClient(autoMLImageLabelerOptions)
-        labeler.process(getVisionImageFromFrame(frame))
+        labeler.process(frame)
             .addOnSuccessListener { labels ->
                 for (label in labels) {
                     val text = label.text
@@ -143,27 +257,20 @@ class MainActivity : AppCompatActivity() {
             }.addOnFailureListener { e ->
 
             }
+        //}
+
 
     }
 
-    private fun getVisionImageFromFrame(frame: Frame): InputImage {
-        val data: ByteArray = frame?.data
-        val imageMetaData = FirebaseVisionImageMetadata.Builder()
-            .setFormat(FirebaseVisionImageMetadata.IMAGE_FORMAT_NV21)
-            .setRotation(FirebaseVisionImageMetadata.ROTATION_90)
-            .setHeight(frame.size.height)
-            .setWidth(frame.size.width)
-            .build()
+    private fun getVisionImageFromFrame(frame: SurfaceView, callback: (InputImage) -> Unit) {
+        val bitmap = Bitmap.createBitmap(1080, 1920, Bitmap.Config.ARGB_8888)
+        PixelCopy.request(frame, bitmap, { copyResult ->
+            if (copyResult == PixelCopy.SUCCESS) {
+                Log.i("LabelTag", "Copied ArFragment view.")
+                callback(InputImage.fromBitmap(bitmap, 0))
+            }
+        }, Handler())
 
-        val image = InputImage.fromByteArray(
-            data,
-            /* image width */ frame.size.width,
-            /* image height */ frame.size.height,
-            ROTATION_90,
-            InputImage.IMAGE_FORMAT_NV21
-        );// or IMAGE_FORMAT_YV12)
-
-        return image
     }
 
 }
