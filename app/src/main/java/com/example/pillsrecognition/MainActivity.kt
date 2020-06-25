@@ -10,11 +10,10 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.ar.core.Config
+import com.google.ar.core.Session
 import com.google.ar.sceneform.AnchorNode
-import com.google.ar.sceneform.Camera
 import com.google.ar.sceneform.animation.ModelAnimator
-import com.google.ar.sceneform.math.Quaternion
-import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.ModelRenderable
 import com.google.ar.sceneform.ux.ArFragment
 import com.google.ar.sceneform.ux.TransformableNode
@@ -34,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private var animationNospa: ModelRenderable? = null
     private var anchorNode: AnchorNode? = null
     private var animator: ModelAnimator? = null
-    private var nextAnimation : Int = 0
+    private var nextAnimation: Int = 0
     private var transformNode: TransformableNode? = null
 
 
@@ -60,7 +59,8 @@ class MainActivity : AppCompatActivity() {
 
         arFragment = supportFragmentManager.findFragmentById(R.id.sceneform_fragment) as ArFragment
         arFragment!!.setOnTapArPlaneListener { hitResult, plane, motionEvent ->
-            if (animationNospa == null) {
+            Log.d("Tap", "Ar Plane tapped")
+            if (animationNospa != null) {
                 val anchor = hitResult.createAnchor()
                 if (anchorNode == null) {
                     anchorNode = AnchorNode(anchor)
@@ -68,7 +68,7 @@ class MainActivity : AppCompatActivity() {
 
                     transformNode = TransformableNode(arFragment!!.transformationSystem)
                     transformNode!!.scaleController.minScale = 0.09f
-                    transformNode!!.scaleController.maxScale = 0.09f
+                    transformNode!!.scaleController.maxScale = 0.1f
                     transformNode!!.setParent(anchorNode)
                     transformNode!!.renderable = animationNospa
                 }
@@ -76,14 +76,15 @@ class MainActivity : AppCompatActivity() {
 
         }
         arFragment!!.arSceneView.scene.addOnUpdateListener {
-            if (anchorNode == null){
-                if(animate.isEnabled){
+            if (anchorNode == null) {
+                if (animate.isEnabled) {
                     animate.backgroundTintList = ColorStateList.valueOf(Color.GRAY)
                     animate.isEnabled = false
                 }
-            }else{
-                if(animate.isEnabled){
-                    animate.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.colorAccent))
+            } else {
+                if (!animate.isEnabled) {
+                    animate.backgroundTintList =
+                        ColorStateList.valueOf(ContextCompat.getColor(this, R.color.colorAccent))
                     animate.isEnabled = true
                 }
             }
@@ -92,10 +93,10 @@ class MainActivity : AppCompatActivity() {
 
         animate.isEnabled = false
         animate.setOnClickListener {
-            if(animator == null || !animator!!.isRunning){
+            if (animator == null || !animator!!.isRunning) {
                 val data = animationNospa!!.getAnimationData(nextAnimation)
                 nextAnimation = (nextAnimation + 1) % animationNospa!!.animationDataCount
-                animator = ModelAnimator(data,animationNospa)
+                animator = ModelAnimator(data, animationNospa)
                 animator!!.start()
             }
         }
@@ -103,17 +104,16 @@ class MainActivity : AppCompatActivity() {
         setupModel()
 
 
-
-
     }
 
     private fun setupModel() {
+        Log.d("Tap", "Model setup")
         ModelRenderable.builder() // To load as an asset from the 'assets' folder ('src/main/assets/andy.sfb'):
-            .setSource(this, R.raw.cangrejo)
+            .setSource(this, R.raw.nospa1)
             .build().thenAccept { modelRenderable ->
                 animationNospa = modelRenderable
             }.exceptionally { throwable ->
-                Toast.makeText(this, ""+throwable.message,Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "" + throwable.message, Toast.LENGTH_SHORT).show()
                 null
             }
     }

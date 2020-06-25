@@ -20,12 +20,12 @@
         android:clickable="true"
         android:focusable="true"
         app:elevation="1dp"
-        app:layout_constraintHorizontal_chainStyle="spread"
-        app:layout_constraintHorizontal_bias="0.45"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.526"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintStart_toStartOf="parent"
         app:srcCompat="@drawable/ic_launcher_foreground"
-        />
+        tools:layout_editor_absoluteY="659dp" />
 
 
     <!--    <TextView-->
