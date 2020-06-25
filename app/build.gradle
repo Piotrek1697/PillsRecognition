@@ -13,7 +13,17 @@ android {
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 
     aaptOptions {
@@ -24,7 +34,6 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            multiDexKeepFile file('multidex-config.txt')
         }
     }
 
@@ -35,12 +44,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.core:core-ktx:1.3.0'
-    implementation 'com.android.support:multidex:2.0.1'
     implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-    //SCENE FORM!
-    implementation 'com.google.ar.sceneform.ux:sceneform-ux:1.17.0'
-
-
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
@@ -52,10 +56,13 @@ dependencies {
     implementation 'com.google.firebase:firebase-ml-vision-object-detection-model:19.0.5'
 
     implementation 'com.otaliastudios:cameraview:2.0.0-beta04'
+
+    implementation 'com.google.ar.sceneform.ux:sceneform-ux:1.15.0'
+    implementation "com.google.ar.sceneform:animation:1.10.0"
+    implementation 'com.google.android.material:material:1.1.0'
 }
 
-
-sceneform.asset('sampledata/nospa.gltf', // 'Source Asset Path' specified during import.
-        'default',                    // 'Material Path' specified during import.
-        'sampledata/nospa.sfa', // '.sfa Output Path' specified during import.
-        'src/main/res/raw/nospa1')      // '.sfb Output Path' specified during import.
+//sceneform.asset('sampledata/cangrejo.fbx', // 'Source Asset Path' specified during import.
+//        'default',                            // 'Material Path' specified during import.
+//        'sampledata/cangrejo.sfa',         // '.sfa Output Path' specified during import.
+//        'src/main/res/raw/cangrejo')
