@@ -83,8 +83,8 @@ class MainActivity : AppCompatActivity() {
 
         val image = InputImage.fromByteArray(
             data,
-            /* image width */ 480,
-            /* image height */ 360,
+            frame.size.width,
+            frame.size.height,
             ROTATION_90,
             InputImage.IMAGE_FORMAT_NV21
         );// or IMAGE_FORMAT_YV12)
