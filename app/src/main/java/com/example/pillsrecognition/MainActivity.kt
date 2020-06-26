@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
     private var aiArray: MutableList<AiRecognizer> = mutableListOf()
 
     private var display3DModel: Boolean by Delegates.observable(false) { _, old, new ->
-        Log.d("LabelTag","Name changed from $old to $new")
+        Log.d("LabelTag", "Name changed from $old to $new")
         if (new)
             enable3DModel()
         else
@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        setupModel()
+        //setupModel()
 
 
     }
@@ -127,6 +127,7 @@ class MainActivity : AppCompatActivity() {
 
         val container = findViewById<ViewGroup>(R.id.sceneform_hand_layout)
         arFragment!!.planeDiscoveryController.setInstructionView(container)
+        setupModel(aiArray.last().modelChooser)
     }
 
     private fun removeAnchorNode(nodeToRemove: AnchorNode) {
@@ -208,10 +209,10 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun setupModel() {
-        Log.d("Tap", "Model setup")
+    private fun setupModel(model : ModelChooser) {
+        Log.d("LabelTag", "Model setup")
         ModelRenderable.builder() // To load as an asset from the 'assets' folder ('src/main/assets/andy.sfb'):
-            .setSource(this, R.raw.nospa)
+            .setSource(this, model.modelPath!!)
             .build().thenAccept { modelRenderable ->
                 animationNospa = modelRenderable
             }.exceptionally { throwable ->
@@ -237,11 +238,15 @@ class MainActivity : AppCompatActivity() {
         labeler.process(frame)
             .addOnSuccessListener { labels ->
                 for (label in labels) {
-                    val aiRecognizer = AiRecognizer(label.text, label.confidence, label.index)
+                    val aiRecognizer = AiRecognizer(
+                        label.text,
+                        label.confidence,
+                        label.index,
+                        ModelChooser.parseString(label.text)
+                    )
                     makeSurePill(aiRecognizer)
                     aiArray.add(aiRecognizer)
                     Log.d("LabelTag", aiRecognizer.toString())
-                    Log.d("LabelTag", aiArray.size.toString())
                 }
             }.addOnFailureListener { e ->
 
@@ -264,7 +269,7 @@ class MainActivity : AppCompatActivity() {
             Log.d("LabelTag", "Rozpoznano tabletke: ${aiRecognizer.label}")
             display3DModel = true
             detectionIterator = 0
-            //enable3DModel()
+            Log.d("LabelTag", "Rozpoznano tabletke: clear")
             aiArray.clear()
         }
     }
