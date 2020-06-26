@@ -1,8 +1,7 @@
 package com.example.pillsrecognition
 
 import android.content.Context
-import android.content.res.ColorStateList
-import android.graphics.*
+import android.graphics.Bitmap
 import android.media.Image
 import android.os.Bundle
 import android.os.Handler
@@ -11,9 +10,9 @@ import android.view.PixelCopy
 import android.view.Surface.ROTATION_90
 import android.view.SurfaceView
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import com.google.ar.core.Config
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
@@ -22,8 +21,6 @@ import com.google.ar.sceneform.FrameTime
 import com.google.ar.sceneform.animation.ModelAnimator
 import com.google.ar.sceneform.rendering.ModelRenderable
 import com.google.ar.sceneform.ux.ArFragment
-import com.google.ar.sceneform.ux.BaseTransformableNode
-import com.google.ar.sceneform.ux.SelectionVisualizer
 import com.google.ar.sceneform.ux.TransformableNode
 import com.google.firebase.ml.vision.objects.FirebaseVisionObject
 import com.google.mlkit.vision.common.InputImage
@@ -31,7 +28,6 @@ import com.google.mlkit.vision.label.ImageLabeling
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerLocalModel
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerOptions
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.ByteArrayOutputStream
 
 
 class MainActivity : AppCompatActivity() {
@@ -45,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private var session: Session? = null
     private var config: Config? = null
     private var lele: Int = 0
+    private var testBool: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,52 +79,61 @@ class MainActivity : AppCompatActivity() {
                 this.onUpdateFrame(frameTime)
             }
 
-        arFragment!!.setOnTapArPlaneListener { hitResult, plane, motionEvent ->
-            Log.d("Tap", "Ar Plane tapped")
-            if (animationNospa != null) {
-                val anchor = hitResult.createAnchor()
-                if (anchorNode == null) {
-                    anchorNode = AnchorNode(anchor)
-                    anchorNode!!.setParent(arFragment!!.arSceneView.scene)
-
-                    transformNode = TransformableNode(arFragment!!.transformationSystem)
-                    transformNode!!.scaleController.minScale = 0.09f
-                    transformNode!!.scaleController.maxScale = 0.1f
-                    transformNode!!.setParent(anchorNode)
-                    transformNode!!.renderable = animationNospa
-                }
-            }
-
-        }
-        arFragment!!.arSceneView.scene.addOnUpdateListener {
-            if (anchorNode == null) {
-                if (animate.isEnabled) {
-                    animate.backgroundTintList = ColorStateList.valueOf(Color.GRAY)
-                    animate.isEnabled = false
-                }
-            } else {
-                if (!animate.isEnabled) {
-                    animate.backgroundTintList =
-                        ColorStateList.valueOf(ContextCompat.getColor(this, R.color.colorAccent))
-                    animate.isEnabled = true
-                }
-            }
-
-        }
-
-        animate.isEnabled = false
         animate.setOnClickListener {
-            if (animator == null || !animator!!.isRunning) {
-                val data = animationNospa!!.getAnimationData(nextAnimation)
-                nextAnimation = (nextAnimation + 1) % animationNospa!!.animationDataCount
-                animator = ModelAnimator(data, animationNospa)
-                animator!!.start()
+
+            testBool = !testBool
+            Log.d("TapBool", "${testBool}")
+            if (!testBool) {
+                arFragment!!.arSceneView.planeRenderer.isVisible = false
+
+                //arFragment!!.planeDiscoveryController.hide()
+                //arFragment!!.planeDiscoveryController.setInstructionView(null)
+
+                if (anchorNode != null) {
+                    removeAnchorNode(anchorNode!!)
+                    anchorNode = null
+                }
+
+            } else {
+                arFragment!!.arSceneView.planeRenderer.isVisible = true
+                //arFragment!!.planeDiscoveryController.show()
+
+                //val container = findViewById<ViewGroup>(R.id.sceneform_hand_layout)
+                //arFragment!!.planeDiscoveryController.setInstructionView(container)
+            }
+        }
+
+        arFragment!!.setOnTapArPlaneListener { hitResult, plane, motionEvent ->
+            Log.d("TapBool", "Ar Plane tapped")
+            if (testBool) {
+                if (animationNospa != null) {
+                    val anchor = hitResult.createAnchor()
+                    if (anchorNode == null) {
+                        anchorNode = AnchorNode(anchor)
+                        anchorNode!!.setParent(arFragment!!.arSceneView.scene)
+
+                        transformNode = TransformableNode(arFragment!!.transformationSystem)
+                        //Set scale of model
+                        transformNode!!.scaleController.minScale = 0.03f
+                        transformNode!!.scaleController.maxScale = 0.07f
+                        transformNode!!.setParent(anchorNode)
+                        transformNode!!.renderable = animationNospa
+                    }
+                }
             }
         }
 
         setupModel()
 
 
+    }
+
+    private fun removeAnchorNode(nodeToRemove: AnchorNode) {
+        //Remove an Anchor node
+        arFragment!!.arSceneView.scene.removeChild(nodeToRemove);
+        nodeToRemove.anchor?.detach();
+        nodeToRemove.setParent(null);
+        nodeToRemove.renderable = null
     }
 
     override fun onResume() {
@@ -195,20 +201,6 @@ class MainActivity : AppCompatActivity() {
             cameraPlaneV.capacity()
         )
 
-//        val baOutputStream = ByteArrayOutputStream()
-//        val yuvImage: YuvImage = YuvImage(
-//            compositeByteArray,
-//            ImageFormat.NV21,
-//            cameraImage.width,
-//            cameraImage.height,
-//            null
-//        )
-//        yuvImage.compressToJpeg(
-//            Rect(0, 0, cameraImage.width, cameraImage.height),
-//            65,
-//            baOutputStream
-//        )
-        //val byteForBitmap = baOutputStream.toByteArray()
         return InputImage.fromByteArray(
             compositeByteArray,
             /* image width */ cameraImage.width,
@@ -221,7 +213,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupModel() {
         Log.d("Tap", "Model setup")
         ModelRenderable.builder() // To load as an asset from the 'assets' folder ('src/main/assets/andy.sfb'):
-            .setSource(this, R.raw.nospa1)
+            .setSource(this, R.raw.nospa)
             .build().thenAccept { modelRenderable ->
                 animationNospa = modelRenderable
             }.exceptionally { throwable ->
