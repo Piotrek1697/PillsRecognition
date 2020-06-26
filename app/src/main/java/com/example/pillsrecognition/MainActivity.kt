@@ -10,6 +10,7 @@ import android.view.PixelCopy
 import android.view.Surface.ROTATION_90
 import android.view.SurfaceView
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.ar.core.Config
@@ -28,6 +29,7 @@ import com.google.mlkit.vision.label.automl.AutoMLImageLabelerLocalModel
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerOptions
 import kotlinx.android.synthetic.main.activity_main.*
 import java.nio.ByteBuffer
+import kotlin.properties.Delegates
 
 
 class MainActivity : AppCompatActivity() {
@@ -41,31 +43,23 @@ class MainActivity : AppCompatActivity() {
     private var session: Session? = null
     private var config: Config? = null
     private var lele: Int = 0
-    private var testBool: Boolean = false
+    private var detectionIterator = 0
+    private var aiArray: MutableList<AiRecognizer> = mutableListOf()
+
+    private var display3DModel: Boolean by Delegates.observable(false) { _, old, new ->
+        Log.d("LabelTag","Name changed from $old to $new")
+        if (new)
+            enable3DModel()
+        else
+            disable3DModel()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-//            != PackageManager.PERMISSION_GRANTED
-//        ) {
-//            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 101)
-//
-//        } else {
-//            cameraView!!.setLifecycleOwner(this)
-//
-//
-//            cameraView!!.addFrameProcessor {
-//                extractDataFromFrame(it!!) { result ->
-//                    text_view.text = result
-//                }
-//            }
-//        }
 
         arFragment = supportFragmentManager.findFragmentById(R.id.sceneform_fragment) as ArFragment
-
-        //arFragment!!.transformationSystem.selectionVisualizer = CustomVisualizer()
 
         //No white dots
         arFragment!!.arSceneView.planeRenderer.isVisible = false
@@ -79,33 +73,16 @@ class MainActivity : AppCompatActivity() {
                 this.onUpdateFrame(frameTime)
             }
 
+
         animate.setOnClickListener {
-
-            testBool = !testBool
-            Log.d("TapBool", "${testBool}")
-            if (!testBool) {
-                arFragment!!.arSceneView.planeRenderer.isVisible = false
-
-                //arFragment!!.planeDiscoveryController.hide()
-                //arFragment!!.planeDiscoveryController.setInstructionView(null)
-
-                if (anchorNode != null) {
-                    removeAnchorNode(anchorNode!!)
-                    anchorNode = null
-                }
-
-            } else {
-                arFragment!!.arSceneView.planeRenderer.isVisible = true
-                //arFragment!!.planeDiscoveryController.show()
-
-                //val container = findViewById<ViewGroup>(R.id.sceneform_hand_layout)
-                //arFragment!!.planeDiscoveryController.setInstructionView(container)
-            }
+            Log.d("TapBool", "${display3DModel}")
+            display3DModel = false
+            //disable3DModel()
         }
 
         arFragment!!.setOnTapArPlaneListener { hitResult, plane, motionEvent ->
             Log.d("TapBool", "Ar Plane tapped")
-            if (testBool) {
+            if (display3DModel) {
                 if (animationNospa != null) {
                     val anchor = hitResult.createAnchor()
                     if (anchorNode == null) {
@@ -126,6 +103,30 @@ class MainActivity : AppCompatActivity() {
         setupModel()
 
 
+    }
+
+    private fun disable3DModel() {
+        if (!display3DModel) {
+            arFragment!!.arSceneView.planeRenderer.isVisible = false
+
+            //Wyłączanie Rączki
+            //arFragment!!.planeDiscoveryController.hide()
+            //arFragment!!.planeDiscoveryController.setInstructionView(null)
+
+            if (anchorNode != null) {
+                removeAnchorNode(anchorNode!!)
+                anchorNode = null
+            }
+
+        }
+    }
+
+    private fun enable3DModel() {
+        arFragment!!.arSceneView.planeRenderer.isVisible = true
+        //arFragment!!.planeDiscoveryController.show()
+
+        val container = findViewById<ViewGroup>(R.id.sceneform_hand_layout)
+        arFragment!!.planeDiscoveryController.setInstructionView(container)
     }
 
     private fun removeAnchorNode(nodeToRemove: AnchorNode) {
@@ -177,10 +178,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (lele % 10 == 0) {
-            val cameraImage: Image = frame!!.acquireCameraImage()
-            //The camera image received is in YUV YCbCr Format. Get buffers for each of the planes and use them to create a new bytearray defined by the size of all three buffers combined
-            extractDataFromFrame(getInputImage(cameraImage))
-            cameraImage.close()
+            if (!display3DModel) {
+                val cameraImage: Image = frame!!.acquireCameraImage()
+                //The camera image received is in YUV YCbCr Format. Get buffers for each of the planes and use them to create a new bytearray defined by the size of all three buffers combined
+                extractDataFromFrame(getInputImage(cameraImage))
+                cameraImage.close()
+            }
         }
     }
 
@@ -225,7 +228,7 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         val autoMLImageLabelerOptions = AutoMLImageLabelerOptions.Builder(localModel)
-            .setConfidenceThreshold(0.5f)  // Evaluate your model in the Firebase console
+            .setConfidenceThreshold(0.65f)  // Evaluate your model in the Firebase console
             // to determine an appropriate value.
             .build()
 
@@ -234,19 +237,36 @@ class MainActivity : AppCompatActivity() {
         labeler.process(frame)
             .addOnSuccessListener { labels ->
                 for (label in labels) {
-                    val text = label.text
-                    val confidence = label.confidence
-                    val index = label.index
-                    Log.d("LabelTag", text)
-                    Log.d("LabelTag", confidence.toString())
-                    Log.d("LabelTag", index.toString())
+                    val aiRecognizer = AiRecognizer(label.text, label.confidence, label.index)
+                    makeSurePill(aiRecognizer)
+                    aiArray.add(aiRecognizer)
+                    Log.d("LabelTag", aiRecognizer.toString())
+                    Log.d("LabelTag", aiArray.size.toString())
                 }
             }.addOnFailureListener { e ->
 
             }
         //}
 
+    }
 
+    private fun makeSurePill(aiRecognizer: AiRecognizer) {
+        val detectionThreshold = 5
+        Log.d("LabelTag", "Iterator ${detectionIterator}")
+        if (aiArray.size > 0) {
+            if (aiArray.last().label == aiRecognizer.label) {
+                detectionIterator++
+            } else {
+                detectionIterator = 0
+            }
+        }
+        if (detectionIterator >= detectionThreshold) {
+            Log.d("LabelTag", "Rozpoznano tabletke: ${aiRecognizer.label}")
+            display3DModel = true
+            detectionIterator = 0
+            //enable3DModel()
+            aiArray.clear()
+        }
     }
 
     private fun getVisionImageFromFrame(frame: SurfaceView, callback: (InputImage) -> Unit) {
