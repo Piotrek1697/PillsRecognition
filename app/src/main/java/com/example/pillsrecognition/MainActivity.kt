@@ -10,7 +10,6 @@ import android.view.PixelCopy
 import android.view.Surface.ROTATION_90
 import android.view.SurfaceView
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.ar.core.Config
@@ -28,6 +27,7 @@ import com.google.mlkit.vision.label.ImageLabeling
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerLocalModel
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerOptions
 import kotlinx.android.synthetic.main.activity_main.*
+import java.nio.ByteBuffer
 
 
 class MainActivity : AppCompatActivity() {
@@ -179,34 +179,29 @@ class MainActivity : AppCompatActivity() {
         if (lele % 10 == 0) {
             val cameraImage: Image = frame!!.acquireCameraImage()
             //The camera image received is in YUV YCbCr Format. Get buffers for each of the planes and use them to create a new bytearray defined by the size of all three buffers combined
-            extractDataFromFrame(getBitmap(cameraImage))
+            extractDataFromFrame(getInputImage(cameraImage))
             cameraImage.close()
         }
     }
 
-    private fun getBitmap(cameraImage: Image): InputImage {
-        val cameraPlaneY = cameraImage.planes[0].buffer
-        val cameraPlaneU = cameraImage.planes[1].buffer
-        val cameraPlaneV = cameraImage.planes[2].buffer
+    private fun getInputImage(cameraImage: Image): InputImage {
 
-//Use the buffers to create a new byteArray that
-        val compositeByteArray =
-            ByteArray(cameraPlaneY.capacity() + cameraPlaneU.capacity() + cameraPlaneV.capacity())
+        val data: ByteArray
+        val buffer0: ByteBuffer = cameraImage.planes[0].buffer
+        val buffer2: ByteBuffer = cameraImage.planes[2].buffer
+        val buffer0_size: Int = buffer0.remaining()
+        val buffer2_size: Int = buffer2.remaining()
+        data = ByteArray(buffer0_size + buffer2_size)
+        buffer0.get(data, 0, buffer0_size)
+        buffer2.get(data, buffer0_size, buffer2_size)
 
-        cameraPlaneY.get(compositeByteArray, 0, cameraPlaneY.capacity())
-        cameraPlaneU.get(compositeByteArray, cameraPlaneY.capacity(), cameraPlaneU.capacity())
-        cameraPlaneV.get(
-            compositeByteArray,
-            cameraPlaneY.capacity() + cameraPlaneU.capacity(),
-            cameraPlaneV.capacity()
-        )
 
         return InputImage.fromByteArray(
-            compositeByteArray,
+            data,
             /* image width */ cameraImage.width,
             /* image height */ cameraImage.height,
             ROTATION_90,
-            InputImage.IMAGE_FORMAT_YV12
+            InputImage.IMAGE_FORMAT_NV21
         )
     }
 
