@@ -1,14 +1,9 @@
 package com.example.pillsrecognition
 
-import android.content.Context
-import android.graphics.Bitmap
 import android.media.Image
 import android.os.Bundle
-import android.os.Handler
 import android.util.Log
-import android.view.PixelCopy
 import android.view.Surface.ROTATION_90
-import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -22,7 +17,6 @@ import com.google.ar.sceneform.animation.ModelAnimator
 import com.google.ar.sceneform.rendering.ModelRenderable
 import com.google.ar.sceneform.ux.ArFragment
 import com.google.ar.sceneform.ux.TransformableNode
-import com.google.firebase.ml.vision.objects.FirebaseVisionObject
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.label.ImageLabeling
 import com.google.mlkit.vision.label.automl.AutoMLImageLabelerLocalModel
@@ -42,7 +36,7 @@ class MainActivity : AppCompatActivity() {
     private var transformNode: TransformableNode? = null
     private var session: Session? = null
     private var config: Config? = null
-    private var lele: Int = 0
+    private var frameCounter: Int = 0
     private var detectionIterator = 0
     private var aiArray: MutableList<AiRecognizer> = mutableListOf()
 
@@ -57,7 +51,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
 
         arFragment = supportFragmentManager.findFragmentById(R.id.sceneform_fragment) as ArFragment
 
@@ -74,10 +67,15 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-        animate.setOnClickListener {
+        hideModelButton.setOnClickListener {
             Log.d("TapBool", "${display3DModel}")
             display3DModel = false
+            hideModelButton.visibility = View.GONE
             //disable3DModel()
+        }
+
+        arFragment!!.setOnSessionInitializationListener {
+            Log.d("LabelTag","Session intialize listener")
         }
 
         arFragment!!.setOnTapArPlaneListener { hitResult, plane, motionEvent ->
@@ -95,13 +93,12 @@ class MainActivity : AppCompatActivity() {
                         transformNode!!.scaleController.maxScale = 0.07f
                         transformNode!!.setParent(anchorNode)
                         transformNode!!.renderable = animationNospa
+                        infoText.text = ""
+                        hideModelButton.visibility = View.VISIBLE
                     }
                 }
             }
         }
-
-        //setupModel()
-
 
     }
 
@@ -144,6 +141,9 @@ class MainActivity : AppCompatActivity() {
             session = Session(this@MainActivity)
             session?.setupAutofocus()
         }
+        //No hand
+        arFragment!!.planeDiscoveryController.hide()
+        arFragment!!.planeDiscoveryController.setInstructionView(null)
     }
 
     private fun Session.setupAutofocus() {
@@ -170,7 +170,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onUpdateFrame(frameTime: FrameTime?) {
-        lele++
+        frameCounter++
         val view = arFragment!!.arSceneView
         val frame = arFragment!!.arSceneView.arFrame
 
@@ -178,7 +178,7 @@ class MainActivity : AppCompatActivity() {
         if (frame == null || frame.camera.trackingState != TrackingState.TRACKING) {
             return
         }
-        if (lele % 10 == 0) {
+        if (frameCounter % 10 == 0) {
             if (!display3DModel) {
                 val cameraImage: Image = frame!!.acquireCameraImage()
                 //The camera image received is in YUV YCbCr Format. Get buffers for each of the planes and use them to create a new bytearray defined by the size of all three buffers combined
@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun setupModel(model : ModelChooser) {
+    private fun setupModel(model: ModelChooser) {
         Log.d("LabelTag", "Model setup")
         ModelRenderable.builder() // To load as an asset from the 'assets' folder ('src/main/assets/andy.sfb'):
             .setSource(this, model.modelPath!!)
@@ -257,7 +257,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun makeSurePill(aiRecognizer: AiRecognizer) {
         val detectionThreshold = 5
-        Log.d("LabelTag", "Iterator ${detectionIterator}")
+        Log.d("LabelTag", "Detection: ${(((detectionIterator.toFloat()) / (detectionThreshold.toFloat())) * 100).toInt()}%")
+        infoText.text = "Detecting: ${(((detectionIterator.toFloat()) / (detectionThreshold.toFloat())) * 100).toInt()}%"
         if (aiArray.size > 0) {
             if (aiArray.last().label == aiRecognizer.label) {
                 detectionIterator++
@@ -267,36 +268,12 @@ class MainActivity : AppCompatActivity() {
         }
         if (detectionIterator >= detectionThreshold) {
             Log.d("LabelTag", "Rozpoznano tabletke: ${aiRecognizer.label}")
+            infoText.text = "Detected: ${aiRecognizer.label}\n" +
+                    "Find flat surface"
             display3DModel = true
             detectionIterator = 0
-            Log.d("LabelTag", "Rozpoznano tabletke: clear")
             aiArray.clear()
         }
     }
 
-    private fun getVisionImageFromFrame(frame: SurfaceView, callback: (InputImage) -> Unit) {
-        val bitmap = Bitmap.createBitmap(1080, 1920, Bitmap.Config.ARGB_8888)
-        PixelCopy.request(frame, bitmap, { copyResult ->
-            if (copyResult == PixelCopy.SUCCESS) {
-                Log.i("LabelTag", "Copied ArFragment view.")
-                callback(InputImage.fromBitmap(bitmap, 0))
-            }
-        }, Handler())
-
-    }
-
-}
-
-class DrawingView(context: Context, var visionObjects: List<FirebaseVisionObject>) : View(context) {
-
-    companion object {
-        val categoryNames: Map<Int, String> = mapOf(
-            FirebaseVisionObject.CATEGORY_UNKNOWN to "Unknown",
-            FirebaseVisionObject.CATEGORY_HOME_GOOD to "Home Goods",
-            FirebaseVisionObject.CATEGORY_FASHION_GOOD to "Fashion Goods",
-            FirebaseVisionObject.CATEGORY_FOOD to "Food",
-            FirebaseVisionObject.CATEGORY_PLACE to "Place",
-            FirebaseVisionObject.CATEGORY_PLANT to "Plant"
-        )
-    }
 }

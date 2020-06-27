@@ -14,18 +14,32 @@
         />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/animate"
+        android:id="@+id/hideModelButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:clickable="true"
         android:focusable="true"
+        android:visibility="gone"
+        app:backgroundTint="#A3A3A3"
         app:elevation="1dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.526"
+        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/ic_launcher_foreground"
-        tools:layout_editor_absoluteY="659dp" />
+        app:srcCompat="@drawable/ic_baseline_adb_24"
+        tools:layout_editor_absoluteY="16dp" />
+
+    <TextView
+        android:id="@+id/infoText"
+        android:layout_width="353dp"
+        android:layout_height="96dp"
+        android:layout_marginBottom="48dp"
+        android:textAlignment="center"
+        android:textSize="30sp"
+        app:layout_constraintBottom_toBottomOf="@+id/sceneform_fragment"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintStart_toStartOf="parent" />
 
 
     <!--    <TextView-->

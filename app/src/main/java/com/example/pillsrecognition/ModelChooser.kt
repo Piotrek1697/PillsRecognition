@@ -2,7 +2,7 @@ package com.example.pillsrecognition
 
 enum class ModelChooser(var aiLabel : String, var modelPath : Int?) {
     NO_SPA("no_spa", R.raw.nospa),
-    IBURAPID("Iburapid", R.raw.cangrejo),
+    IBURAPID("Iburapid", R.raw.calperos),
     DEFAULT("No", null);
 
     companion object{
