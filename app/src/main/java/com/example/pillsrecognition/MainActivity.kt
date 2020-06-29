@@ -276,4 +276,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun averagePropbility(detectionThreshold: Int, array: MutableList<AiRecognizer>): Double {
+        var average: Double = 0.0;
+
+        for (i in 0..detectionThreshold-1) {
+            average += array.last().probality - i
+        }
+        return average/detectionThreshold
+    }
+
 }
