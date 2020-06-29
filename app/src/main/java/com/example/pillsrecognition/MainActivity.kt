@@ -268,7 +268,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (detectionIterator >= detectionThreshold) {
             Log.d("LabelTag", "Rozpoznano tabletke: ${aiRecognizer.label}")
-            infoText.text = "Detected: ${aiRecognizer.label}\n" +
+            infoText.text = "Detected: ${aiRecognizer.label} (${(aiRecognizer.probality*100).toInt()}%)\n" +
                     "Find flat surface"
             display3DModel = true
             detectionIterator = 0
