@@ -23,8 +23,8 @@ enum class ModelChooser(var aiLabel : String, var modelPath : Int?) {
         }
     }
 
-    fun stringFormatter(label: String): String{
-        return label.replace("[!@#$%&*/()_+=|<>?{}\\[\\]~]".toRegex(),"-").capitalize()
+    fun stringFormatter(): String{
+        return aiLabel.replace("[!@#$%&*/()_+=|<>?{}\\[\\]~]".toRegex(),"-").capitalize()
     }
 
 }

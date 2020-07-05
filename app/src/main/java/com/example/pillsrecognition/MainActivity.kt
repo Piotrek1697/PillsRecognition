@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         arFragment!!.setOnSessionInitializationListener {
-            Log.d("LabelTag","Session intialize listener")
+            Log.d("LabelTag", "Session intialize listener")
         }
 
         arFragment!!.setOnTapArPlaneListener { hitResult, plane, motionEvent ->
@@ -257,8 +257,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun makeSurePill(aiRecognizer: AiRecognizer) {
         val detectionThreshold = 5
-        Log.d("LabelTag", "Detection: ${(((detectionIterator.toFloat()) / (detectionThreshold.toFloat())) * 100).toInt()}%")
-        infoText.text = "Detecting: ${(((detectionIterator.toFloat()) / (detectionThreshold.toFloat())) * 100).toInt()}%"
+        Log.d(
+            "LabelTag",
+            "Detection: ${(((detectionIterator.toFloat()) / (detectionThreshold.toFloat())) * 100).toInt()}%"
+        )
+        infoText.text =
+            "Detecting: ${(((detectionIterator.toFloat()) / (detectionThreshold.toFloat())) * 100).toInt()}%"
         if (aiArray.size > 0) {
             if (aiArray.last().label == aiRecognizer.label) {
                 detectionIterator++
@@ -268,7 +272,10 @@ class MainActivity : AppCompatActivity() {
         }
         if (detectionIterator >= detectionThreshold) {
             Log.d("LabelTag", "Rozpoznano tabletke: ${aiRecognizer.label}")
-            infoText.text = "Detected: ${aiRecognizer.label} (${(aiRecognizer.probality*100).toInt()}%)\n" +
+            infoText.text = "Detected: ${aiRecognizer.modelChooser.stringFormatter()} (${(averageProbability(
+                detectionThreshold,
+                this.aiArray
+            )).toInt()}%)\n" +
                     "Find flat surface"
             display3DModel = true
             detectionIterator = 0
@@ -276,13 +283,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun averagePropbility(detectionThreshold: Int, array: MutableList<AiRecognizer>): Double {
+    private fun averageProbability(
+        detectionThreshold: Int,
+        array: MutableList<AiRecognizer>
+    ): Double {
         var average: Double = 0.0;
 
-        for (i in 0..detectionThreshold-1) {
-            average += array.last().probality - i
+        for (i in 0..detectionThreshold - 1) {
+            average += array[array.size-1 - i].probality
         }
-        return average/detectionThreshold
+        return (average / detectionThreshold) * 100
     }
 
 }
